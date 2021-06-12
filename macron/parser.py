@@ -142,19 +142,19 @@ class StringView:
             self.consume(1)
             if self.next_char == "n":
                 self.consume(1)
-                return 10
+                return b"\n"
             elif self.next_char == "r":
                 self.consume(1)
-                return 13
+                return b"\r"
             elif self.next_char == "t":
                 self.consume(1)
-                return 9
+                return b"\t"
             elif self.next_char == "\\":
                 self.consume(1)
-                return 92
+                return b"\\"
             elif self.next_char == "0":
                 self.consume(1)
-                return 0
+                return b"\0"
             elif self.next_char == "x":
                 self.consume(1)
                 try:
@@ -163,19 +163,22 @@ class StringView:
                     self.fail("invalid byte escape", say_unexpected=False)
                 else:
                     self.consume(2)
-                    return r
+                    return bytes([r])
             elif self.next_char == '"':
                 self.consume(1)
-                return 34
+                return b'"'
             elif self.next_char == "'":
                 self.consume(1)
-                return 39
+                return b"'"
             else:
                 self.fail("invalid escape", say_unexpected=False)
         elif self.next_char == quote:
+            self.consume(1)
             return None
+        elif self.next_char:
+            return self.consume(1).encode()
         else:
-            return ord(self.consume(1))
+            return -1
 
     def _parse_unicode(self, quote):
         if self.next_char == "\\":
