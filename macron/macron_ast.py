@@ -29,6 +29,10 @@ class ListLit:
     val: list[Expr]
 
 @dataclass
+class TupleLit:
+    val: list[Expr]
+
+@dataclass
 class BlockLit:
     val: list[Expr]
 
@@ -95,6 +99,10 @@ class Operator(Enum):
     ACCESS = 46
     BITWISE_NOT = 47
     ARROW = 48
+    TYPE_ASSERT = 49
+    RANGE = 50
+    RANGE_INCLUSIVE = 51
+    EITHER = 52
 
 @dataclass
 class OpCall:

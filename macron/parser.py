@@ -79,6 +79,12 @@ class StringView:
         self.consume(len(expected))
         return ParseResult(None, True)
 
+    def literal_not_followed_by(self, expected, mustnt):
+        if self.string[self.idx:self.idx+len(expected)] != expected or self.string[self.idx+len(expected):self.idx+len(expected)+len(mustnt)] == mustnt:
+            return ParseResult(None, False)
+        self.consume(len(expected))
+        return ParseResult(None, True)
+
     def expect(self, result, string):
         if not result:
             self.fail(f"expected {string}")
@@ -326,7 +332,6 @@ def qual_name(view):
 def comma_sep_expr(view, *, restrict=False):
     if restrict:
         x = core_expr(view, BINARY_OPS["|"][1])
-        view.expect(x, "expression")
     else:
         x = expr(view)
     if not x:
@@ -335,7 +340,6 @@ def comma_sep_expr(view, *, restrict=False):
     while view.symbol(",").success:
         if restrict:
             x = core_expr(view, BINARY_OPS["|"][1])
-            view.expect(x, "expression")
         else:
             x = expr(view)
         if not x:
@@ -386,9 +390,12 @@ def atom(view):
     if view.literal("("):
         with view.newlines(True):
             view.skip_ws()
-            r = expr(view)
+            es = comma_sep_expr(view)
         view.expect_lit(")")
-        return r
+        if len(es) == 1:
+            return ParseResult(es[0], True)
+        else:
+            return ParseResult(ast.TupleLit(es), True)
     return block(view) or list_lit(view) or int_lit(view) or string_lit(view) or qual_name(view)
 
 def base_expr(view):
@@ -397,19 +404,21 @@ def base_expr(view):
         return a
     x = a.result
     while True:
-        if view.literal("."):
+        if view.literal_not_followed_by(".", "."):
             d = atom(view)
             view.expect(d, "literal or name")
-            x = ast.OpCall(ast.Operator.DOT, (x, d))
-        elif view.next_char == "?" and view.string[view.idx+1] != "?":
-            view.consume(1)
+            x = ast.OpCall(ast.Operator.DOT, (x, d.result))
+        elif view.literal_not_followed_by("?", "?"):
             x = ast.OpCall(ast.Operator.MAYBE, x)
+        elif view.literal("!"):
+            x = ast.OpCall(ast.Operator.TYPE_ASSERT, x)
         elif view.literal("["):
             with view.newlines(True):
                 view.skip_ws()
                 e = expr(view)
+            view.expect(e, "expression")
             view.expect_lit("]")
-            x = ast.OpCall(ast.Operator.SUBSCRIPT, (x, e))
+            x = ast.OpCall(ast.Operator.SUBSCRIPT, (x, e.result))
         elif view.literal("("):
             with view.newlines(True):
                 view.skip_ws()
@@ -436,12 +445,19 @@ OPS = [
     ([("??", ast.Operator.COALESCE)], Assoc.RIGHT),
     ([("**", ast.Operator.EXPONENT)], Assoc.RIGHT),
     ([("-", ast.Operator.NEGATE), ("+", ast.Operator.PLUS), ("~", ast.Operator.BITWISE_NOT)], Assoc.PREFIX),
-    ([("*", ast.Operator.MULTIPLY), ("@", ast.Operator.MATRIX_MULTIPLY), ("/", ast.Operator.DIVIDE), ("//", ast.Operator.FLOOR_DIVIDE), ("%", ast.Operator.MODULUS)], Assoc.LEFT),
+    ([
+        ("*", ast.Operator.MULTIPLY),
+        ("@", ast.Operator.MATRIX_MULTIPLY),
+        ("/", ast.Operator.DIVIDE),
+        ("//", ast.Operator.FLOOR_DIVIDE),
+        ("%", ast.Operator.MODULUS)
+    ], Assoc.LEFT),
     ([("+", ast.Operator.ADD), ("-", ast.Operator.SUBTRACT)], Assoc.LEFT),
     ([(">>", ast.Operator.RIGHT_SHIFT), ("<<", ast.Operator.LEFT_SHIFT)], Assoc.LEFT),
     ([("&", ast.Operator.BITWISE_AND)], Assoc.LEFT),
     ([("^", ast.Operator.BITWISE_XOR)], Assoc.LEFT),
-    ([("|", ast.Operator.BITWISE_OR)], Assoc.LEFT),
+    ([("|", ast.Operator.BITWISE_OR, ("|>", ast.Operator.EITHER)], Assoc.LEFT),
+    ([("..", ast.Operator.RANGE), ("..=", ast.Operator.RANGE_INCLUSIVE)], Assoc.LEFT),
     ([
         ("<", ast.Operator.LESS_THAN),
         ("<=", ast.Operator.LESS_THAN_EQUAL),
@@ -569,11 +585,9 @@ def core_expr(view, min_power=0):
             x = ast.OpCall(op, (x, core_expr(view, right_power).result))
     return ParseResult(x, True)
 
-def commaless_call(view, *, expect=True):
+def commaless_call(view):
     head = core_expr(view)
-    if expect:
-        view.expect(head, "expression")
-    elif not head:
+    if not head:
         return ParseResult(None, False)
     head = head.result
     args = []
@@ -582,7 +596,7 @@ def commaless_call(view, *, expect=True):
         if not arg:
             break
         if not args and isinstance(head, ast.OpCall) and head.op not in (ast.Operator.MAYBE, ast.Operator.SUBSCRIPT):
-            view.fail("head of call must be a literal, name, or parenthesized expression with optional use of the ? and subscript operators")
+            view.fail("head of call must be a literal, name, or parenthesized expression with optional use of the ? and subscript operators", say_unexpected=False)
         args.append(arg.result)
     if not args:
         return ParseResult(head, True)
@@ -595,7 +609,7 @@ def code(view):
     lines = []
     while True:
         with view.newlines(False):
-            r = expr(view, expect=False)
+            r = expr(view)
         if not r:
             break
         lines.append(r.result)
