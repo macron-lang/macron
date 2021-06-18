@@ -434,7 +434,7 @@ def base_expr(view):
         else:
             break
     view.skip_ws()
-    return x
+    return ParseResult(x, True)
 
 class Assoc(Enum):
     LEFT = 0
@@ -456,7 +456,7 @@ OPS = [
     ([(">>", ast.Operator.RIGHT_SHIFT), ("<<", ast.Operator.LEFT_SHIFT)], Assoc.LEFT),
     ([("&", ast.Operator.BITWISE_AND)], Assoc.LEFT),
     ([("^", ast.Operator.BITWISE_XOR)], Assoc.LEFT),
-    ([("|", ast.Operator.BITWISE_OR, ("|>", ast.Operator.EITHER)], Assoc.LEFT),
+    ([("|", ast.Operator.BITWISE_OR), ("|>", ast.Operator.EITHER)], Assoc.LEFT),
     ([("..", ast.Operator.RANGE), ("..=", ast.Operator.RANGE_INCLUSIVE)], Assoc.LEFT),
     ([
         ("<", ast.Operator.LESS_THAN),
@@ -569,9 +569,10 @@ def core_expr(view, min_power=0):
             view.fail(f"{FAIL_GANG_UNARY[op]} cannot be used before the {FAIL_GANG_BINARY[r.op]} without parentheses", say_unexpected=False)
         x = ast.OpCall(op, r)
     else:
-        x = base_expr(view)
-        if not x:
-            return ParseResult(None, False)
+        r = base_expr(view)
+        if not r:
+            return r
+        x = r.result
 
     while True:
         r = parse_binary_op(view, min_power)
@@ -582,13 +583,15 @@ def core_expr(view, min_power=0):
             x = ast.OpCall(op, (x, commaless_call(view).result))
             break  # nothing more to parse
         else:
-            x = ast.OpCall(op, (x, core_expr(view, right_power).result))
+            r = core_expr(view, right_power)
+            view.expect(r, "expression")
+            x = ast.OpCall(op, (x, r.result))
     return ParseResult(x, True)
 
 def commaless_call(view):
     head = core_expr(view)
     if not head:
-        return ParseResult(None, False)
+        return head
     head = head.result
     args = []
     while True:
@@ -626,12 +629,16 @@ def macron(view):
     return ParseResult(r, True)
 
 
-import sys
-with open(sys.argv[1], "r") as f:
-    program = f.read()
-try:
-    v = StringView(program)
-    with v.newlines(True):
-        print(macron(v).result)
-except ParseFailed:
-    pass
+if __name__ == "__main__":
+    import sys
+    with open(sys.argv[1], "r") as f:
+        program = f.read()
+    print("Parsing program:")
+    print(program)
+    print("============")
+    try:
+        v = StringView(program)
+        with v.newlines(True):
+            print(macron(v).result)
+    except ParseFailed:
+        pass
