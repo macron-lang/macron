@@ -270,7 +270,7 @@ help: to make a byte string, prepend `b` to the string (e.g. {example})""", say_
         if self._next_by_i(i) == "r":
             i += 1
             raw = True
-            while self._next_by_i(i) == "#":
+            while self._next_by_i(i) == "$":
                 i += 1
                 hash_depth += 1
 
@@ -296,7 +296,7 @@ help: to make a byte string, prepend `b` to the string (e.g. {example})""", say_
             r = meth(quote)
             if r == -1:
                 self.fail(f"expected {quote}")
-            if not r and all(c == "#" for c in self.string[self.idx:self.idx+hash_depth]):
+            if not r and all(c == "$" for c in self.string[self.idx:self.idx+hash_depth]):
                 self.consume(hash_depth)
                 break
             else:
@@ -471,6 +471,7 @@ OPS = [
     ([("or", ast.Operator.OR)], Assoc.LEFT),
     ([("=>", ast.Operator.ARROW)], Assoc.RIGHT),
     ([(":", ast.Operator.COLON)], Assoc.RIGHT),
+    ([("$", ast.Operator.ATTRIBUTE)], Assoc.PREFIX),
     ([("=", ast.Operator.ASSIGN)], Assoc.RIGHT),
 ]
 

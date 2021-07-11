@@ -103,6 +103,7 @@ class Operator(Enum):
     RANGE = 50
     RANGE_INCLUSIVE = 51
     EITHER = 52
+    ATTRIBUTE = 53
 
 @dataclass
 class OpCall:
