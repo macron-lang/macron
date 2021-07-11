@@ -62,7 +62,6 @@ class Operator(Enum):
     MULTIPLY = 9
     MATRIX_MULTIPLY = 10
     DIVIDE = 11
-    FLOOR_DIVIDE = 12
     MODULUS = 13
     ADD = 14
     SUBTRACT = 15

@@ -449,7 +449,6 @@ OPS = [
         ("*", ast.Operator.MULTIPLY),
         ("@", ast.Operator.MATRIX_MULTIPLY),
         ("/", ast.Operator.DIVIDE),
-        ("//", ast.Operator.FLOOR_DIVIDE),
         ("%", ast.Operator.MODULUS)
     ], Assoc.LEFT),
     ([("+", ast.Operator.ADD), ("-", ast.Operator.SUBTRACT)], Assoc.LEFT),
