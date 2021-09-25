@@ -1,0 +1,32 @@
+allocvars ffffffffffffffff 1 1
+
+nand v0 v0 0
+add v1 v0 2
+__test_eq v0 ff
+__test_eq v1 1
+
+# Align the stack
+nand s s fffffffffffffff8
+nand s s s
+
+# Push the base pointer
+add s s fffffffffffffff8
+add *8|s b 0
+
+# Move the base pointer to the stack pointer
+add b s 0
+allocvars 0 1
+
+	nand v2 v2 0
+	__test_eq v2 ff
+
+# s = b
+add s b 0
+
+# Pop the base pointer
+add b *8|s 0
+add s s 8
+
+# v0 and v1 are still the same
+__test_eq v0 ff
+__test_eq v1 1

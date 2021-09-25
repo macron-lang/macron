@@ -1,0 +1,15 @@
+allocvars ffffffffffffffff 1
+
+nand v0 v0 0
+nand v0 v0 v0
+
+add v0 v0 f0
+
+shiftrz v0 v0 1
+__test_eq v0 78
+
+shiftl v0 v0 1
+__test_eq v0 f0
+
+shiftrs v0 v0 1
+__test_eq v0 f8

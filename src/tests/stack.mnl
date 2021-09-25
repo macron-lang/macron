@@ -1,0 +1,4 @@
+add s s fffffffffffffffe
+nand *1|s *1|s 0
+add *1|s *1|s 2
+__test_eq *1|s 1
