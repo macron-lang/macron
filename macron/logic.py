@@ -21,6 +21,10 @@ class Immediate(Inst):
     value: int  
 
 @dataclass
+class Var(Inst):
+    var: Variable
+
+@dataclass
 class Add(Inst):
     augend: Variable
     addend: Variable
@@ -86,7 +90,7 @@ class DeallocScope(Inst):
 
 @dataclass
 class Print(Inst):
-    val: Variables
+    val: Variable
 
 
 class Terminator:
@@ -101,13 +105,14 @@ class Switch(Terminator):
 class Br(Terminator):
     target: Block
 
-
+@dataclass
 class Block:
     name: str
     scope: Scope
     body: list[tuple[Variable | None, Inst, ScopeRef]]
     terminator: Terminator
 
+@dataclass
 class Program:
     scopes: list[Scope]
     blocks: list[Block]
